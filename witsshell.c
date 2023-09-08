@@ -11,6 +11,14 @@ char *search_paths[11];
 
 #define MAX_INPUT_SIZE 1024
 
+char *trim_whitespace(char *str) {
+    // Skip leading whitespace characters
+    while (isspace((unsigned char)*str)) {
+        str++;
+    }
+    return str;
+}
+
 void built_in(char *all_args[], int num_args){
 
 
@@ -42,34 +50,79 @@ void built_in(char *all_args[], int num_args){
 
 }
 
+
 void execute_command(char *input) {
     char *input_dupe = NULL;
     char *arguments;
+    char *argumentstest;
     char *all_args[11];
+    char *all_argstest[11];
+    char *token;
     int num_args = 0;
+    int num_argstests = 0;
     bool redirect = false;
     bool executable = false;
     char *output_filename = NULL;
+    char *outfile_dupe;
 
     input_dupe = strdup(input);
 
-    while ((arguments = strsep(&input_dupe, " ")) != NULL && num_args < 10 ) {
-        if (strcmp(arguments, ">") == 0) {
-            redirect = true;
-            if ((arguments = strsep(&input_dupe, " ")) != NULL) {
-                output_filename = arguments;
-            }
+    int out_count = 0;
 
-            if ((arguments = strsep(&input_dupe, " ")) != NULL) {
-                char error_message[30] = "An error has occurred\n";
-                write(STDERR_FILENO, error_message, strlen(error_message));
-                exit(0);
-            }
-
-            break;
+    for (int i = 0; input_dupe[i] != '\0'; i++) {
+        if (input_dupe[i] == '>') {
+            out_count++;
         }
+    }
 
-        if (arguments[0] != '\0') { // Check if the string is not empty
+    if(out_count > 1){
+        char error_message[30] = "An error has occurred\n";
+        write(STDERR_FILENO, error_message, strlen(error_message));
+        exit(0);
+    }
+
+    while ((argumentstest= strsep(&input_dupe, ">")) != NULL && num_argstests <10){
+        if (argumentstest[0] != '\0') {
+            all_argstest[num_argstests++] = argumentstest;
+        }
+    }
+
+    outfile_dupe = all_argstest[1];
+
+    for (int i = 0; outfile_dupe[i] != '\0'; i++) {
+        if (outfile_dupe[i] == ' ') {
+            char error_message[30] = "An error has occurred\n";
+            write(STDERR_FILENO, error_message, strlen(error_message));
+            exit(0);
+        }
+    }
+
+    if (num_argstests > 1){
+        redirect = true;
+    }
+
+
+    if (redirect){
+        output_filename = all_argstest[1];
+    }
+
+    while ((arguments = strsep(&all_argstest[0], " ")) != NULL && num_args < 10 ) {
+//        if (strcmp(arguments, ">") == 0) {
+//            redirect = true;
+//            if ((arguments = strsep(&input_dupe, " ")) != NULL) {
+//                output_filename = arguments;
+//            }
+//
+//            if ((arguments= strsep(&input_dupe, " ")) != NULL) {
+//                char error_message[30] = "An error has occurred\n";
+//                write(STDERR_FILENO, error_message, strlen(error_message));
+//                exit(0);
+//            }
+//
+//            break;
+//        }
+
+        if (arguments[0] != '\0') {
             all_args[num_args++] = arguments;
         }
     }
@@ -93,7 +146,6 @@ void execute_command(char *input) {
             }
             strcat(executable_path, all_args[0]);
 
-            // Check if the file at executable_path is executable
             if (access(executable_path, X_OK) == 0) {
                 pid_t pid = fork();
                 if (pid == -1) {
@@ -102,6 +154,7 @@ void execute_command(char *input) {
                     exit(1);
                 } else if (pid == 0) {
                     if (redirect) {
+                        output_filename = trim_whitespace(output_filename);
                         int fd = open(output_filename, O_WRONLY | O_CREAT | O_TRUNC, S_IRUSR | S_IWUSR);
                         if (fd == -1) {
                             char error_message[30] = "An error has occurred\n";
@@ -114,7 +167,6 @@ void execute_command(char *input) {
                     if (execvp(executable_path, all_args) == -1) {
                         exit(1);
                     }
-                    // No need to break here, the child process will exit
                 } else {
                     int status;
                     waitpid(pid, &status, 0);
@@ -232,5 +284,5 @@ int main(int MainArgc, char *MainArgv[]){
         exit(1);
     }
 
-	return(0);
+    return(0);
 }
