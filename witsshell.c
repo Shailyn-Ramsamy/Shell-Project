@@ -87,6 +87,12 @@ void execute_command(char *input) {
         }
     }
 
+    if (out_count == 1 && num_argstests == 1){
+        char error_message[30] = "An error has occurred\n";
+        write(STDERR_FILENO, error_message, strlen(error_message));
+        exit(0);
+    }
+
     outfile_dupe = all_argstest[1];
 
     for (int i = 0; outfile_dupe[i] != '\0'; i++) {
@@ -107,20 +113,6 @@ void execute_command(char *input) {
     }
 
     while ((arguments = strsep(&all_argstest[0], " ")) != NULL && num_args < 10 ) {
-//        if (strcmp(arguments, ">") == 0) {
-//            redirect = true;
-//            if ((arguments = strsep(&input_dupe, " ")) != NULL) {
-//                output_filename = arguments;
-//            }
-//
-//            if ((arguments= strsep(&input_dupe, " ")) != NULL) {
-//                char error_message[30] = "An error has occurred\n";
-//                write(STDERR_FILENO, error_message, strlen(error_message));
-//                exit(0);
-//            }
-//
-//            break;
-//        }
 
         if (arguments[0] != '\0') {
             all_args[num_args++] = arguments;
