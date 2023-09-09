@@ -95,13 +95,13 @@ void execute_command(char *input) {
 
     outfile_dupe = all_argstest[1];
 
-    for (int i = 0; outfile_dupe[i] != '\0'; i++) {
-        if (outfile_dupe[i] == ' ') {
-            char error_message[30] = "An error has occurred\n";
-            write(STDERR_FILENO, error_message, strlen(error_message));
-            exit(0);
-        }
-    }
+//    for (int i = 0; outfile_dupe[i] != '\0'; i++) {
+//        if (outfile_dupe[i] == ' ') {
+//            char error_message[30] = "An error has occurred\n";
+//            write(STDERR_FILENO, error_message, strlen(error_message));
+//            exit(0);
+//        }
+//    }
 
     if (num_argstests > 1){
         redirect = true;
@@ -179,6 +179,47 @@ void execute_command(char *input) {
     }
 
     free(input_dupe);
+}
+
+void execute_parallel_command(char *commands){
+    char *command_dupe = NULL;
+    char *command;
+    char *command_arr[11];
+    int num_commands = 0;
+
+    for (int i = 0; i < 11; i++){
+        command_arr[i] = NULL;
+    }
+
+    command_dupe = strdup(commands);
+
+    while ((command = strsep(&command_dupe, "&")) != NULL && num_commands < 10) {
+        if (command[0] != '\0') {
+            command_arr[num_commands++] = trim_whitespace(command);
+        }
+    }
+
+    for (int i = 0; i < num_commands; i++) {
+        char *current_command = command_arr[i];
+        int pid = fork();
+
+        if (pid == -1) {
+            char error_message[30] = "An error has occurred\n";
+            write(STDERR_FILENO, error_message, strlen(error_message));
+            exit(1);
+        } else if (pid == 0) {
+            // Child process
+            execute_command(current_command);
+            exit(0);
+        }
+    }
+
+    // Wait for all child processes to finish
+    for (int i = 0; i < num_commands; i++) {
+        wait(NULL);
+    }
+
+    free(command_dupe);
 }
 
 
