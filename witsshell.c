@@ -19,6 +19,7 @@ char *trim_whitespace(char *str) {
     return str;
 }
 
+
 void built_in(char *all_args[], int num_args){
 
 
@@ -57,13 +58,11 @@ void execute_command(char *input) {
     char *argumentstest;
     char *all_args[11];
     char *all_argstest[11];
-    char *token;
     int num_args = 0;
     int num_argstests = 0;
     bool redirect = false;
     bool executable = false;
     char *output_filename = NULL;
-    char *outfile_dupe;
 
     input_dupe = strdup(input);
 
@@ -93,15 +92,6 @@ void execute_command(char *input) {
         exit(0);
     }
 
-    outfile_dupe = all_argstest[1];
-
-//    for (int i = 0; outfile_dupe[i] != '\0'; i++) {
-//        if (outfile_dupe[i] == ' ') {
-//            char error_message[30] = "An error has occurred\n";
-//            write(STDERR_FILENO, error_message, strlen(error_message));
-//            exit(0);
-//        }
-//    }
 
     if (num_argstests > 1){
         redirect = true;
@@ -120,63 +110,60 @@ void execute_command(char *input) {
     }
 
 
-    if (strcmp(all_args[0], "cd") == 0 || strcmp(all_args[0], "exit") == 0 || strcmp(all_args[0], "path") == 0) {
-        built_in(all_args, num_args);
+//    if (strcmp(all_args[0], "cd") == 0 || strcmp(all_args[0], "exit") == 0) {
+//        built_in(all_args, num_args);
 
-        if (strcmp(all_args[0], "path") == 0) {
-            executable = false;
+
+    int num_paths = 0;
+    while (search_paths[num_paths] != NULL) {
+        all_args[num_args] = NULL;
+        char executable_path[MAX_INPUT_SIZE];
+
+        strcpy(executable_path, search_paths[num_paths]);
+        if (search_paths[num_paths][strlen(search_paths[num_paths]) - 1] != '/') {
+            strcat(executable_path, "/");
         }
-    } else {
-        int num_paths = 0;
-        while (search_paths[num_paths] != NULL) {
-            all_args[num_args] = NULL;
-            char executable_path[MAX_INPUT_SIZE];
+        strcat(executable_path, all_args[0]);
 
-            strcpy(executable_path, search_paths[num_paths]);
-            if (search_paths[num_paths][strlen(search_paths[num_paths]) - 1] != '/') {
-                strcat(executable_path, "/");
-            }
-            strcat(executable_path, all_args[0]);
-
-            if (access(executable_path, X_OK) == 0) {
-                pid_t pid = fork();
-                if (pid == -1) {
-                    char error_message[30] = "An error has occurred\n";
-                    write(STDERR_FILENO, error_message, strlen(error_message));
-                    exit(1);
-                } else if (pid == 0) {
-                    if (redirect) {
-                        output_filename = trim_whitespace(output_filename);
-                        int fd = open(output_filename, O_WRONLY | O_CREAT | O_TRUNC, S_IRUSR | S_IWUSR);
-                        if (fd == -1) {
-                            char error_message[30] = "An error has occurred\n";
-                            write(STDERR_FILENO, error_message, strlen(error_message));
-                            exit(1);
-                        }
-                        dup2(fd, STDOUT_FILENO);
-                        close(fd);
-                    }
-                    if (execvp(executable_path, all_args) == -1) {
+        if (access(executable_path, X_OK) == 0) {
+            pid_t pid = fork();
+            if (pid == -1) {
+                char error_message[30] = "An error has occurred\n";
+                write(STDERR_FILENO, error_message, strlen(error_message));
+                exit(1);
+            } else if (pid == 0) {
+                if (redirect) {
+                    output_filename = trim_whitespace(output_filename);
+                    int fd = open(output_filename, O_WRONLY | O_CREAT | O_TRUNC, S_IRUSR | S_IWUSR);
+                    if (fd == -1) {
+                        char error_message[30] = "An error has occurred\n";
+                        write(STDERR_FILENO, error_message, strlen(error_message));
                         exit(1);
                     }
-                } else {
-                    int status;
-                    waitpid(pid, &status, 0);
-                    executable = true;
-                    break;
+                    dup2(fd, STDOUT_FILENO);
+                    close(fd);
                 }
+                if (execvp(executable_path, all_args) == -1) {
+                    exit(1);
+                }
+            } else {
+                int status;
+                waitpid(pid, &status, 0);
+                executable = true;
+                break;
             }
-            else{
-                executable = false;
-            }
+        }
+        else{
+            executable = false;
+        }
 
-            num_paths++;
-        }
-        if (!executable){
-            char error_message[30] = "An error has occurred\n";
-            write(STDERR_FILENO, error_message, strlen(error_message));
-        }
+        num_paths++;
     }
+    if (!executable){
+        char error_message[30] = "An error has occurred\n";
+        write(STDERR_FILENO, error_message, strlen(error_message));
+    }
+
 
     free(input_dupe);
 }
@@ -186,6 +173,11 @@ void execute_parallel_command(char *commands){
     char *command;
     char *command_arr[11];
     int num_commands = 0;
+    char *temp;
+    int num_temp = 0;
+    char *temp_arr[11];
+    char *command_arr_duplicate[11];
+    int num_commands_duplicate = 0;
 
     for (int i = 0; i < 11; i++){
         command_arr[i] = NULL;
@@ -200,24 +192,48 @@ void execute_parallel_command(char *commands){
     }
 
     for (int i = 0; i < num_commands; i++) {
-        char *current_command = command_arr[i];
-        int pid = fork();
-
-        if (pid == -1) {
+        command_arr_duplicate[i] = strdup(command_arr[i]);
+        if (command_arr_duplicate[i] != NULL) {
+            num_commands_duplicate++;
+        } else {
             char error_message[30] = "An error has occurred\n";
             write(STDERR_FILENO, error_message, strlen(error_message));
             exit(1);
-        } else if (pid == 0) {
-            // Child process
-            execute_command(current_command);
-            exit(0);
         }
     }
 
-    // Wait for all child processes to finish
-    for (int i = 0; i < num_commands; i++) {
-        wait(NULL);
+
+    while ((temp = strsep(&command_arr_duplicate[0], " ")) != NULL && num_temp < 10){
+        temp_arr[num_temp++] = trim_whitespace(temp);
     }
+
+    if (strcmp(temp_arr[0], "cd") == 0 || strcmp(temp_arr[0], "exit") == 0 || strcmp(temp_arr[0], "path") == 0) {
+        built_in(temp_arr, num_temp);
+    }
+    else{
+        for (int i = 0; i < num_commands; i++) {
+            char *current_command = command_arr[i];
+            int pid = fork();
+
+            if (pid == -1) {
+                char error_message[30] = "An error has occurred\n";
+                write(STDERR_FILENO, error_message, strlen(error_message));
+                exit(1);
+            } else if (pid == 0) {
+                // Child process
+                execute_command(current_command);
+                exit(0);
+            }
+        }
+
+        for (int i = 0; i < num_commands; i++) {
+            wait(NULL);
+        }
+    }
+
+
+    // Wait for all child processes to finish
+
 
     free(command_dupe);
 }
@@ -262,7 +278,7 @@ void interactive_mode(){
             continue;
         }
 
-        execute_command(input);
+        execute_parallel_command(input);
         free(input);
     }
 }
@@ -292,7 +308,7 @@ void batch_mode(const char *filename){
             free(input);
             continue;
         }
-        execute_command(input);
+        execute_parallel_command(input);
     }
 
     fclose(batch);
