@@ -30,3 +30,19 @@ Before using this shell, make sure you have the following installed:
 
    ```shell
    git clone https://github.com/your-username/custom-shell.git
+
+2. Compile the code:
+
+   ```shell
+   make witsshell
+
+3. Run the shell interactively:
+
+   ```shell
+   ./witsshell
+
+4. Run the shell in batch mode with a batch file:
+
+   ```shell
+   ./custom_shell batch_file.txt
+
